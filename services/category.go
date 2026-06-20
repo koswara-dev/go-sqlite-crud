@@ -1,35 +1,42 @@
 package services
 
 import (
-	"go-sqlite-crud/config"
 	"go-sqlite-crud/models"
+	"go-sqlite-crud/repositories"
 )
 
-func CreateCategory(category *models.Category) error {
-	return config.DB.Create(category).Error
+type CategoryService interface {
+	CreateCategory(category *models.Category) error
+	GetAllCategories() ([]models.Category, error)
+	GetCategoryByID(id uint) (models.Category, error)
+	UpdateCategory(category *models.Category) error
+	DeleteCategory(id uint) error
 }
 
-func GetAllCategories() ([]models.Category, error) {
-	var categories []models.Category
-	err := config.DB.Find(&categories).Error
-	return categories, err
+type categoryService struct {
+	repo repositories.CategoryRepository
 }
 
-func GetCategoryByID(id uint) (models.Category, error) {
-	var category models.Category
-	err := config.DB.Preload("Products").First(&category, id).Error
-	return category, err
+func NewCategoryService(repo repositories.CategoryRepository) CategoryService {
+	return &categoryService{repo: repo}
 }
 
-func UpdateCategory(category *models.Category) error {
-	return config.DB.Save(category).Error
+func (s *categoryService) CreateCategory(category *models.Category) error {
+	return s.repo.Create(category)
 }
 
-func DeleteCategory(id uint) error {
-	// First retrieve category to make sure it exists and to comply with GORM delete triggers if any
-	var category models.Category
-	if err := config.DB.First(&category, id).Error; err != nil {
-		return err
-	}
-	return config.DB.Delete(&category).Error
+func (s *categoryService) GetAllCategories() ([]models.Category, error) {
+	return s.repo.FindAll()
+}
+
+func (s *categoryService) GetCategoryByID(id uint) (models.Category, error) {
+	return s.repo.FindByID(id)
+}
+
+func (s *categoryService) UpdateCategory(category *models.Category) error {
+	return s.repo.Update(category)
+}
+
+func (s *categoryService) DeleteCategory(id uint) error {
+	return s.repo.Delete(id)
 }

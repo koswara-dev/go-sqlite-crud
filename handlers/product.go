@@ -12,21 +12,29 @@ import (
 	"gorm.io/gorm"
 )
 
-// CreateProduct handles POST /products
-func CreateProduct(c *gin.Context) {
+type ProductHandler struct {
+	service services.ProductService
+}
+
+func NewProductHandler(service services.ProductService) *ProductHandler {
+	return &ProductHandler{service: service}
+}
+
+// CreateProduct handles POST /api/v1/products
+func (h *ProductHandler) CreateProduct(c *gin.Context) {
 	var product models.Product
 	if err := c.ShouldBindJSON(&product); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	if err := services.CreateProduct(&product); err != nil {
+	if err := h.service.CreateProduct(&product); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to create product: " + err.Error()})
 		return
 	}
 
 	// Fetch product with preloaded category for response
-	resProduct, err := services.GetProductByID(product.ID)
+	resProduct, err := h.service.GetProductByID(product.ID)
 	if err == nil {
 		product = resProduct
 	}
@@ -34,8 +42,8 @@ func CreateProduct(c *gin.Context) {
 	c.JSON(http.StatusCreated, product)
 }
 
-// GetProducts handles GET /products (search, filter, pagination)
-func GetProducts(c *gin.Context) {
+// GetProducts handles GET /api/v1/products (search, filter, pagination)
+func (h *ProductHandler) GetProducts(c *gin.Context) {
 	search := c.Query("q")
 	if search == "" {
 		search = c.Query("search")
@@ -68,7 +76,7 @@ func GetProducts(c *gin.Context) {
 		limit = 10
 	}
 
-	products, total, err := services.GetProducts(search, categoryID, minPrice, maxPrice, page, limit)
+	products, total, err := h.service.GetProducts(search, categoryID, minPrice, maxPrice, page, limit)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve products: " + err.Error()})
 		return
@@ -85,8 +93,8 @@ func GetProducts(c *gin.Context) {
 	})
 }
 
-// GetProductByID handles GET /products/:id
-func GetProductByID(c *gin.Context) {
+// GetProductByID handles GET /api/v1/products/:id
+func (h *ProductHandler) GetProductByID(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
@@ -94,7 +102,7 @@ func GetProductByID(c *gin.Context) {
 		return
 	}
 
-	product, err := services.GetProductByID(uint(id))
+	product, err := h.service.GetProductByID(uint(id))
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Product not found"})
@@ -107,8 +115,8 @@ func GetProductByID(c *gin.Context) {
 	c.JSON(http.StatusOK, product)
 }
 
-// UpdateProduct handles PUT /products/:id
-func UpdateProduct(c *gin.Context) {
+// UpdateProduct handles PUT /api/v1/products/:id
+func (h *ProductHandler) UpdateProduct(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
@@ -116,7 +124,7 @@ func UpdateProduct(c *gin.Context) {
 		return
 	}
 
-	product, err := services.GetProductByID(uint(id))
+	product, err := h.service.GetProductByID(uint(id))
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Product not found"})
@@ -138,13 +146,13 @@ func UpdateProduct(c *gin.Context) {
 	product.Stock = input.Stock
 	product.Description = input.Description
 
-	if err := services.UpdateProduct(&product); err != nil {
+	if err := h.service.UpdateProduct(&product); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to update product: " + err.Error()})
 		return
 	}
 
 	// Fetch product with preloaded category for response
-	resProduct, err := services.GetProductByID(product.ID)
+	resProduct, err := h.service.GetProductByID(product.ID)
 	if err == nil {
 		product = resProduct
 	}
@@ -152,8 +160,8 @@ func UpdateProduct(c *gin.Context) {
 	c.JSON(http.StatusOK, product)
 }
 
-// DeleteProduct handles DELETE /products/:id
-func DeleteProduct(c *gin.Context) {
+// DeleteProduct handles DELETE /api/v1/products/:id
+func (h *ProductHandler) DeleteProduct(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
@@ -161,7 +169,7 @@ func DeleteProduct(c *gin.Context) {
 		return
 	}
 
-	if err := services.DeleteProduct(uint(id)); err != nil {
+	if err := h.service.DeleteProduct(uint(id)); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Product not found"})
 			return

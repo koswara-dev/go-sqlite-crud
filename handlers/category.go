@@ -12,15 +12,23 @@ import (
 	"gorm.io/gorm"
 )
 
-// CreateCategory handles POST /categories
-func CreateCategory(c *gin.Context) {
+type CategoryHandler struct {
+	service services.CategoryService
+}
+
+func NewCategoryHandler(service services.CategoryService) *CategoryHandler {
+	return &CategoryHandler{service: service}
+}
+
+// CreateCategory handles POST /api/v1/categories
+func (h *CategoryHandler) CreateCategory(c *gin.Context) {
 	var category models.Category
 	if err := c.ShouldBindJSON(&category); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	if err := services.CreateCategory(&category); err != nil {
+	if err := h.service.CreateCategory(&category); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create category: " + err.Error()})
 		return
 	}
@@ -28,9 +36,9 @@ func CreateCategory(c *gin.Context) {
 	c.JSON(http.StatusCreated, category)
 }
 
-// GetCategories handles GET /categories
-func GetCategories(c *gin.Context) {
-	categories, err := services.GetAllCategories()
+// GetCategories handles GET /api/v1/categories
+func (h *CategoryHandler) GetCategories(c *gin.Context) {
+	categories, err := h.service.GetAllCategories()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -39,8 +47,8 @@ func GetCategories(c *gin.Context) {
 	c.JSON(http.StatusOK, categories)
 }
 
-// GetCategoryByID handles GET /categories/:id
-func GetCategoryByID(c *gin.Context) {
+// GetCategoryByID handles GET /api/v1/categories/:id
+func (h *CategoryHandler) GetCategoryByID(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
@@ -48,7 +56,7 @@ func GetCategoryByID(c *gin.Context) {
 		return
 	}
 
-	category, err := services.GetCategoryByID(uint(id))
+	category, err := h.service.GetCategoryByID(uint(id))
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Category not found"})
@@ -61,8 +69,8 @@ func GetCategoryByID(c *gin.Context) {
 	c.JSON(http.StatusOK, category)
 }
 
-// UpdateCategory handles PUT /categories/:id
-func UpdateCategory(c *gin.Context) {
+// UpdateCategory handles PUT /api/v1/categories/:id
+func (h *CategoryHandler) UpdateCategory(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
@@ -70,7 +78,7 @@ func UpdateCategory(c *gin.Context) {
 		return
 	}
 
-	category, err := services.GetCategoryByID(uint(id))
+	category, err := h.service.GetCategoryByID(uint(id))
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Category not found"})
@@ -87,7 +95,7 @@ func UpdateCategory(c *gin.Context) {
 	}
 
 	category.Name = input.Name
-	if err := services.UpdateCategory(&category); err != nil {
+	if err := h.service.UpdateCategory(&category); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update category: " + err.Error()})
 		return
 	}
@@ -95,8 +103,8 @@ func UpdateCategory(c *gin.Context) {
 	c.JSON(http.StatusOK, category)
 }
 
-// DeleteCategory handles DELETE /categories/:id
-func DeleteCategory(c *gin.Context) {
+// DeleteCategory handles DELETE /api/v1/categories/:id
+func (h *CategoryHandler) DeleteCategory(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
@@ -104,7 +112,7 @@ func DeleteCategory(c *gin.Context) {
 		return
 	}
 
-	if err := services.DeleteCategory(uint(id)); err != nil {
+	if err := h.service.DeleteCategory(uint(id)); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Category not found"})
 			return

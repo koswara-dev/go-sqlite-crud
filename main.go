@@ -10,8 +10,8 @@ func main() {
 	// Initialize database and migration
 	config.InitDB()
 
-	// Setup routing structure
-	r := routes.SetupRouter()
+	// Setup routing structure by injecting the database connection
+	r := routes.SetupRouter(config.DB)
 
 	fmt.Println("Server is running on port :8080")
 	if err := r.Run(":8080"); err != nil {
